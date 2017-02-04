@@ -74,7 +74,7 @@ int main(int argc, char* argv[])
 		, "dot_sse_asm"
 #endif
 #ifdef USE_AVX
-		, "dot_avx", "dot_avx_dp"
+		, "dot_avx", "dot_avx_dp", "dot_avx_dp2"
 #ifdef _WIN64
 		, "dot_avx_asm"
 #endif
@@ -225,6 +225,13 @@ int main(int argc, char* argv[])
 		s = clock();
 		for (; clock()-s < duration; ++counts[fi]) {
 			simd_result[0] = dot_avx_dp(a, b, len);
+		}
+		ASSERT_EQUALS_FLOAT(c_result[0], simd_result[0]);
+
+		fi++; printf("Executing %s...\n", names[fi]);
+		s = clock();
+		for (; clock()-s < duration; ++counts[fi]) {
+			simd_result[0] = dot_avx_dp2(a, b, len);
 		}
 		ASSERT_EQUALS_FLOAT(c_result[0], simd_result[0]);
 
