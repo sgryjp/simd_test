@@ -13,61 +13,78 @@ float dot_c(const float *a, const float *b, size_t len)
 float dot_sse(const float *a, const float *b, size_t len)
 {
 	size_t i;
-	__m128 *A, *B, tmp, accum;
+	__m128 accum;
+	alignas(MALIGN) float buf[4];
 
 	accum = _mm_setzero_ps();
 	for (i = 0; i<len; i += 4) {
-		A = (__m128*)(a + i);
-		B = (__m128*)(b + i);
+		__m128 va = _mm_load_ps(a + i);
+		__m128 vb = _mm_load_ps(b + i);
 
-		tmp = _mm_mul_ps(*A, *B);
+		__m128 tmp = _mm_mul_ps(va, vb);
 		accum = _mm_add_ps(accum, tmp);
 	}
-	return accum.m128_f32[0] + accum.m128_f32[1] + accum.m128_f32[2] + accum.m128_f32[3];
+
+	_mm_store_ps(buf, accum);
+	return buf[0] + buf[1] + buf[2] + buf[3];
 }
 
 /* DPPS instruction version (SSE 4.1) */
 float dot_sse41_dp(const float *a, const float *b, size_t len)
 {
 	size_t i;
-	__m128 *A, *B, tmp;
-	float accum = {0};
+	__m128 accum;
+	alignas(MALIGN) float buf[4];
 
+	accum = _mm_setzero_ps();
 	for (i = 0; i<len; i += 4) {
-		A = (__m128*)(a + i);
-		B = (__m128*)(b + i);
+		__m128 va = _mm_load_ps(a + i);
+		__m128 vb = _mm_load_ps(b + i);
 
-		tmp = _mm_dp_ps(*A, *B, 0xf1);
-		accum += tmp.m128_f32[0];
+		__m128 tmp = _mm_dp_ps(va, vb, 0xf1);
+		accum = _mm_add_ps(accum, tmp);
 	}
-	return accum;
+
+	_mm_store_ps(buf, accum);
+	return buf[0];
 }
 
 #ifdef USE_AVX
+/* VMULPS + VADDPS version */
 float dot_avx(const float *a, const float *b, size_t len)
 {
-	alignas(MALIGN) float accum[8] = {0};
+	size_t i;
+	__m256 accum;
+	alignas(MALIGN) float buf[8];
 
-	for (; 0<len; len -= 8) {
-		__m256 ymm = _mm256_load_ps(a);
-		ymm = _mm256_mul_ps(ymm, *(__m256*)b);
-		*(__m256*)accum = _mm256_add_ps(ymm, *(__m256*)accum);
-		a += 8; b += 8;
+	accum = _mm256_setzero_ps();
+	for (i = 0; i < len; i += 8) {
+		__m256 va = _mm256_load_ps(a + i);
+		__m256 vb = _mm256_load_ps(b + i);
+		__m256 tmp = _mm256_mul_ps(va, vb);
+		accum = _mm256_add_ps(accum, tmp);
 	}
-	return accum[0] + accum[1] + accum[2] + accum[3] + accum[4] + accum[5] + accum[6] + accum[7];
+
+	_mm256_store_ps(buf, accum);
+	return buf[0] + buf[1] + buf[2] + buf[3] + buf[4] + buf[5] + buf[6] + buf[7];
 }
 
-/* VDPPS instruction version */
+/* VDPPS version */
 float dot_avx_dp(const float *a, const float *b, size_t len)
 {
-	size_t	i;
-	float accum = 0.f;
-	__m256 dp;
+	size_t i;
+	__m256 accum;
+	alignas(MALIGN) float buf[8];
 
+	accum = _mm256_setzero_ps();
 	for (i = 0; i<len; i += 8) {
-		dp = _mm256_dp_ps(*(__m256*)(a + i), *(__m256*)(b + i), 0xf1);
-		accum += dp.m256_f32[0] + dp.m256_f32[4];
+		__m256 va = _mm256_load_ps(a + i);
+		__m256 vb = _mm256_load_ps(b + i);
+		__m256 tmp = _mm256_dp_ps(va, vb, 0xf1);
+		accum = _mm256_add_ps(tmp, accum);
 	}
-	return accum;
+
+	_mm256_store_ps(buf, accum);
+	return buf[0] + buf[4];
 }
 #endif

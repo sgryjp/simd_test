@@ -37,9 +37,9 @@ void init_vectors(float *a, float *b, float *c, size_t len)
 {
 	size_t i;
 	for (i = 0; i<len; ++i) {
-		a[i] = (float)i * 1e-4f;
-		b[i] = a[i] + 1e-4f;
-		c[i] = 0.25f;
+		a[i] = (rand() / (float)RAND_MAX) - .5f;
+		b[i] = (rand() / (float)RAND_MAX) - .5f;
+		c[i] = (rand() / (float)RAND_MAX) - .5f;
 	}
 }
 
@@ -50,7 +50,7 @@ int main(int argc, char* argv[])
 	float	*a, *b, *c, *c_result, *simd_result;
 	clock_t	s, duration;
 	size_t	counts[32] = {0};
-	size_t	len = 4096;
+	size_t	len;
 	const char* names[] = {
 		"add_c", "add_sse"
 #ifdef USE_AVX
@@ -81,6 +81,7 @@ int main(int argc, char* argv[])
 #endif
 	};
 
+	len = 4096;
 	duration = (clock_t)(0.5 * (double)CLOCKS_PER_SEC);
 	for (i = 1; i < argc; ++i) {
 		if (strcmp(argv[i], "-l") == 0 && i+1 < argc) {
